@@ -27,7 +27,7 @@ def test_email_backend_settings():
         'файловый бэкенд для отправки e-mail.'
     )
     excpect_email_file = settings.BASE_DIR / 'sent_emails'
-    assert settings.EMAIL_FILE_PATH == excpect_email_file, (
+    assert getattr(settings, 'EMAIL_FILE_PATH', '') == excpect_email_file, (
         'Убедитесь, что с помощью настроки `EMAIL_FILE_PATH` для '
         'отправки e-mail задан файл `BASE_DIR / \'sent_emails\'`.'
     )

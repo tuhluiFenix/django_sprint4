@@ -116,8 +116,15 @@ class BaseFormTester(BaseTester):
         items_before = set(qs.all())
 
         restored_data = restore_cleaned_data(form.cleaned_data)
-        response = submitter.test_submit(
-            url=self._action, data=restored_data)
+        try:
+            response = submitter.test_submit(
+                url=self._action, data=restored_data)
+        except Exception as e:
+            raise AssertionError(
+                f'При создании {self.of_which_obj} {self.on_which_page} '
+                f'возникает ошибка:\n'
+                f'{type(e).__name__}: {e}'
+            )
 
         items_after: Set[Model] = set(qs.all())
         created_items = items_after - items_before
@@ -164,9 +171,9 @@ class BaseFormTester(BaseTester):
                 form, qs,
                 AnonymousSubmitTester(
                     self,
-                    test_response_cbk=
-                    AnonymousSubmitTester.get_test_response_redirect_cbk(
-                        tester=self)),
+                    test_response_cbk=(
+                        AnonymousSubmitTester.get_test_response_redirect_cbk(
+                            tester=self))),
                 assert_created=False)
 
         except ItemCreatedException:
@@ -226,10 +233,10 @@ class BaseFormTester(BaseTester):
                     form, qs,
                     AuthorisedSubmitTester(
                         self,
-                        test_response_cbk=
-                        AuthorisedSubmitTester.get_test_response_ok_cbk(
-                            tester=self
-                        )),
+                        test_response_cbk=(
+                            AuthorisedSubmitTester.get_test_response_ok_cbk(
+                                tester=self
+                            ))),
                     assert_created=True)
             except ItemNotCreatedException:
                 raise AssertionError(
@@ -288,7 +295,8 @@ class BaseFormTester(BaseTester):
             if not self._ModelAdapter(item).text in content:
                 raise AssertionError(
                     f'Убедитесь, что при создании {self.of_which_obj} '
-                    f'{self.on_which_page} значение поля '
+                    f'{self.on_which_page} правильно настроена '
+                    f'переадресация, и значение поля '
                     f'`{item_adapter.get_student_field_name(prop)}` '
                     'отображается на странице ответа.'
                 )
@@ -304,13 +312,13 @@ class BaseFormTester(BaseTester):
             self.another_user_client,
             submitter=UnauthorizedSubmitTester(
                 tester=self,
-                test_response_cbk=
-                UnauthorizedSubmitTester.get_test_response_redirect_cbk(
-                    tester=self,
-                    redirect_to_page='страницу публикации'
-                )),
+                test_response_cbk=(
+                    UnauthorizedSubmitTester.get_test_response_redirect_cbk(
+                        tester=self,
+                        redirect_to_page='страницу публикации'
+                    ))),
             item_adapter=item_adapter, updated_form=updated_form)
-        assert can_edit != True, (
+        assert can_edit is not True, (
             f'Убедитесь, что редактирование {self.of_which_obj} недоступно '
             'неавторизованному пользователю.')
 
@@ -318,12 +326,12 @@ class BaseFormTester(BaseTester):
             self.unlogged_client,
             submitter=AnonymousSubmitTester(
                 tester=self,
-                test_response_cbk=
-                AnonymousSubmitTester.get_test_response_redirect_cbk(
-                    tester=self
-                )),
+                test_response_cbk=(
+                    AnonymousSubmitTester.get_test_response_redirect_cbk(
+                        tester=self
+                    ))),
             item_adapter=item_adapter, updated_form=updated_form)
-        assert can_edit != True, (
+        assert can_edit is not True, (
             f'Убедитесь, что редактирование {self.of_which_obj} недоступно '
             'неаутентифицированному пользователю.')
 
@@ -331,10 +339,10 @@ class BaseFormTester(BaseTester):
             self.user_client,
             submitter=AuthorisedSubmitTester(
                 tester=self,
-                test_response_cbk=
-                AuthorisedSubmitTester.get_test_response_ok_cbk(
-                    tester=self
-                )),
+                test_response_cbk=(
+                    AuthorisedSubmitTester.get_test_response_ok_cbk(
+                        tester=self
+                    ))),
             item_adapter=item_adapter, updated_form=updated_form)
         assert can_edit, (
             f'Убедитесь, что авторизованному пользователю доступно '

@@ -1,11 +1,9 @@
 from abc import abstractmethod
-from functools import partial
 from typing import Set, Tuple, Optional
 
 from django.db.models import QuerySet, Model
 from django.http import HttpResponse
 
-from fixtures.types import ModelAdapterT
 from form.base_form_tester import (
     UnauthorizedSubmitTester, AnonymousSubmitTester,
     AuthorisedSubmitTester, SubmitTester)
@@ -39,17 +37,18 @@ class DeleteTester(BaseTester):
             f'Убедитесь, что при отправке {self.of_which_query} '
             f'{self.of_which_obj} {by_user} не возникает ошибок.')
 
-    def test_delete_item(self, qs: QuerySet, delete_url_addr: str) -> HttpResponse:
+    def test_delete_item(self, qs: QuerySet,
+                         delete_url_addr: str) -> HttpResponse:
         instances_before: Set[Model] = set(qs.all())
 
         can_delete, response = self.user_can_delete(
             UnauthorizedSubmitTester(
                 tester=self,
-                test_response_cbk=
-                UnauthorizedSubmitTester.get_test_response_redirect_cbk(
-                    tester=self,
-                    redirect_to_page=self.redirect_to_page
-                )),
+                test_response_cbk=(
+                    UnauthorizedSubmitTester.get_test_response_redirect_cbk(
+                        tester=self,
+                        redirect_to_page=self.redirect_to_page
+                    ))),
             delete_url_addr, self._item_adapter, qs=qs)
         assert not can_delete, (
             f'Убедитесь, что {self.which_obj} не может быть удалена '
@@ -58,11 +57,11 @@ class DeleteTester(BaseTester):
         can_delete, response = self.user_can_delete(
             AnonymousSubmitTester(
                 tester=self,
-                test_response_cbk=
+                test_response_cbk=(
                     AnonymousSubmitTester.get_test_response_redirect_cbk(
-                    tester=self,
-                    redirect_to_page=self.redirect_to_page
-                )),
+                        tester=self,
+                        redirect_to_page=self.redirect_to_page
+                    ))),
             delete_url_addr, self._item_adapter, qs=qs)
         assert not can_delete, (
             f'Убедитесь, что {self.which_obj} не может быть удалена '
@@ -71,10 +70,10 @@ class DeleteTester(BaseTester):
         can_delete, response = self.user_can_delete(
             AuthorisedSubmitTester(
                 tester=self,
-                test_response_cbk=
-                AuthorisedSubmitTester.get_test_response_ok_cbk(
-                    tester=self
-                )),
+                test_response_cbk=(
+                    AuthorisedSubmitTester.get_test_response_ok_cbk(
+                        tester=self
+                    ))),
             delete_url_addr, self._item_adapter, qs=qs)
         assert can_delete, (
             f'Убедитесь, что при отправке {self.of_which_query} '
@@ -90,9 +89,9 @@ class DeleteTester(BaseTester):
 
         AuthorisedSubmitTester(
             tester=self,
-            test_response_cbk=
-                AuthorisedSubmitTester.get_test_response_404_cbk(tester=self)
-            ).test_submit(url=delete_url_addr, data={})
+            test_response_cbk=AuthorisedSubmitTester.get_test_response_404_cbk(
+                tester=self)
+        ).test_submit(url=delete_url_addr, data={})
 
         return response
 

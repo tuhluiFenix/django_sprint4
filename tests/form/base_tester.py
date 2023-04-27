@@ -39,7 +39,6 @@ class BaseTester(ABC):
     def to_which_page(self):
         return f'на страницу {self.of_which_action} {self.of_which_obj}'
 
-
     @abstractmethod
     def redirect_error_message(self, by_user: str, redirect_to_page: str):
         ...

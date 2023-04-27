@@ -2,7 +2,7 @@ import re
 from collections import namedtuple
 from http import HTTPStatus
 from inspect import getsource
-from typing import Iterable, Type, TypeVar, Optional, Union, Any, Tuple
+from typing import Iterable, Type, Optional, Union, Any, Tuple
 
 import pytest
 from django.apps import apps
@@ -109,29 +109,6 @@ def another_user_client(another_user):
     return client
 
 
-@pytest.fixture(scope='session')
-def post_context_key(user_client, post_with_published_location):
-    check_post_page_msg = (
-        'Убедитесь, что страница публикации '
-        'существует и отображается в соответствии с заданием.'
-    )
-    try:
-        post_response = user_client.get(
-            f'/posts/{post_with_published_location.id}/')
-    except Exception:
-        raise AssertionError(check_post_page_msg)
-    assert post_response.status_code == HTTPStatus.OK, check_post_page_msg
-    post_key = None
-    for key, val in dict(post_response.context).items():
-        if isinstance(val, Post):
-            post_key = key
-            break
-    assert post_key, (
-        'Убедитесь, что в контекст страницы поста передан пост.'
-    )
-    return post_key
-
-
 def get_post_list_context_key(
         user_client, page_url, page_load_err_msg, key_missing_msg):
     try:
@@ -149,63 +126,6 @@ def get_post_list_context_key(
             pass
     assert post_list_key, key_missing_msg
     return post_list_key
-
-
-@pytest.fixture
-def main_page_post_list_context_key(mixer, user_client):
-    temp_category = mixer.blend('blog.Category', is_published=True)
-    temp_location = mixer.blend('blog.Location', is_published=True)
-    temp_post = mixer.blend('blog.Post', is_published=True,
-                            location=temp_location, category=temp_category)
-    page_load_err_msg = (
-        'Убедитесь, что главная страница существует и отображается '
-        'в соответствии с заданием.'
-    )
-    key_missing_msg = (
-        'Убедитесь, что если существует хотя бы один опубликованный пост '
-        'с опубликованной категорией и датой публикации в прошлом, '
-        'в контекст главной страницы передаётся непустой список постов.'
-    )
-    try:
-        result = get_post_list_context_key(
-            user_client, '/', page_load_err_msg, key_missing_msg)
-    except Exception as e:
-        raise AssertionError(str(e)) from e
-    finally:
-        temp_post.delete()
-        temp_location.delete()
-        temp_category.delete()
-    return result
-
-
-@pytest.fixture
-def category_page_post_list_context_key(mixer, user_client):
-    temp_category = mixer.blend('blog.Category', is_published=True)
-    temp_location = mixer.blend('blog.Location', is_published=True)
-    temp_post = mixer.blend(
-        'blog.Post', is_published=True,
-        category=temp_category, location=temp_location)
-    page_load_err_msg = (
-        'Убедитесь, что страница категории существует и отображается '
-        'в соответствии с заданием в случае, '
-        'если категория существует и опубликована.'
-    )
-    key_missing_msg = (
-        'Убедитесь, что если существует хотя бы один опубликованный пост '
-        'с опубликованной категорией и датой публикации в прошлом, '
-        'в контекст страницы категории передаётся непустой список постов.'
-    )
-    try:
-        result = get_post_list_context_key(
-            user_client, f'/category/{temp_category.slug}/',
-            page_load_err_msg, key_missing_msg)
-    except Exception as e:
-        raise AssertionError(str(e)) from e
-    finally:
-        temp_post.delete()
-        temp_location.delete()
-        temp_category.delete()
-    return result
 
 
 class _TestModelAttrs:

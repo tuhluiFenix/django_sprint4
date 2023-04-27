@@ -4,6 +4,7 @@ import uuid
 
 import pytest
 from django.conf import settings
+from django.views.csrf import csrf_failure
 from pytest_django.asserts import assertTemplateUsed
 
 
@@ -28,7 +29,7 @@ def test_custom_err_handlers(client):
             'головном файле с маршрутами, и что в этом файле нет ошибок.'
         )
 
-    assert settings.CSRF_FAILURE_VIEW, (
+    assert csrf_failure.__module__ not in settings.CSRF_FAILURE_VIEW, (
         'Убедитесь, что задали view-функцию для обработки ошибки CSRF-токена '
         'через настройку CSRF_FAILURE_VIEW.')
 
@@ -53,7 +54,8 @@ def test_custom_err_handlers(client):
     non_existing_url = uuid.uuid4()
     expected_template = f'pages/{fname}'
     response = client.get(non_existing_url)
-    assertTemplateUsed(response, expected_template), (
+    assertTemplateUsed(
+        response, expected_template,
         f'Убедитесь, что для страниц со статусом ответа `{status}` '
         f'используется шаблон `{expected_template}`')
 

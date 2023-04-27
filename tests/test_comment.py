@@ -122,7 +122,7 @@ def test_comment(
     old_prop_value = item_to_edit_adapter.displayed_field_name_or_value
     update_props = {
         item_to_edit_adapter.item_cls_adapter.displayed_field_name_or_value:
-            f'{old_prop_value} edited'    }
+            f'{old_prop_value} edited'}
     delete_url_addr = del_url.key
 
     _test_edit(
@@ -142,11 +142,10 @@ def test_comment(
 
     response = user_client.get(edit_url)
     assert response.status_code == HTTPStatus.NOT_FOUND, (
-        f'Убедитесь, что при обращении к странице редактирования '
-        f'несуществующего комментария возвращается статус 404.')
+        'Убедитесь, что при обращении к странице редактирования '
+        'несуществующего комментария возвращается статус 404.')
 
     response = user_client.get(delete_url_addr)
     assert response.status_code == HTTPStatus.NOT_FOUND, (
-        f'Убедитесь, что при обращении к странице удаления '
-        f'несуществующего комментария возвращается статус 404.')
-
+        'Убедитесь, что при обращении к странице удаления '
+        'несуществующего комментария возвращается статус 404.')

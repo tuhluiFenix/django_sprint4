@@ -18,4 +18,3 @@ class CommentFormTester(BaseFormTester):
     @property
     def of_which_obj(self):
         return 'комментария'
-

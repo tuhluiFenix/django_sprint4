@@ -17,5 +17,4 @@ class DeleteCommentTester(DeleteTester):
 
     @property
     def redirect_to_page(self):
-        return f'страницу публикации'
-
+        return 'страницу публикации'

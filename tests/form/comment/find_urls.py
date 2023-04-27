@@ -25,19 +25,14 @@ def find_edit_and_delete_urls(
     post_page_content = post_page_response.content.decode('utf-8')
     assert len(adapted_comments) >= 2
 
-    links_not_found_err_msg = (
-        'Убедитесь, что при наличии комментария на странице публикации '
-        'его автору доступны две ссылки под комментарием: одна для '
-        'редактирования комментария и одна - для его удаления. '
-        'Ссылки должны вести на разные страницы, адрес которых начинается с '
-        f'{urls_start_with.key}'
-    )
-
     # Get info about html between two consecutive comments
     pattern = re.compile(
         fr'{adapted_comments[0].text}([\w\W]*?){adapted_comments[1].text}')
     between_comments_match = pattern.search(post_page_content)
-    assert between_comments_match, links_not_found_err_msg
+    assert between_comments_match, (
+        'Убедитесь, что комментарии к публикациям отсортированы '
+        'по времени их публикации, «от старых к новым».'
+    )
     text_between_comments = between_comments_match.group(1)
     between_comments_start_lineix = post_page_content.count(
         '\n', 0, between_comments_match.start())
@@ -52,7 +47,13 @@ def find_edit_and_delete_urls(
         link_text_in=text_between_comments,
     )
     if len(set(link.get('href') for link in comment_links)) != 2:
-        raise AssertionError(links_not_found_err_msg)
+        raise AssertionError(
+            'Убедитесь, что при наличии комментария на странице публикации '
+            'его автору доступны две ссылки под комментарием: одна для '
+            'редактирования комментария и одна - для его удаления. '
+            'Ссылки должны вести на разные страницы, '
+            f'адрес которых начинается с {urls_start_with.key}'
+        )
 
     # We have two links. Which one of them is the edit link,
     # and which - the delete link? Edit link must lead to a form.

@@ -90,10 +90,10 @@ def test_profile(
             user_content, anothers_same_page_content, ignore_urls={user_url})
     except ManageProfileLinksException:
         raise AssertionError(
-            'Убедитесь, что аутентифицированному пользователю '
-            'на странице своего профиля доступны две дополнительные ссылки, '
-            'недоступные ему на страницах профиля других пользователей: '
-            'одна для редактирования профиля и одна для изменения пароля.')
+            'Убедитесь, что ссылки для редактирования профиля '
+            'и изменения пароля отображаются на странице '
+            'профиля аутентицицированного пользователя, '
+            'и не отображаются на страницах профилей других пользователей.')
 
     unlogged_diff_urls = get_extra_urls(
         base_content=unlogged_same_page_content, extra_content=user_content)

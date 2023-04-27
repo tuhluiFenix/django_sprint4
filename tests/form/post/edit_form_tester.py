@@ -1,5 +1,3 @@
-from abc import abstractmethod
-
 from form.post.form_tester import PostFormTester
 
 

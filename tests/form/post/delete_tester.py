@@ -17,4 +17,4 @@ class DeletePostTester(DeleteTester):
 
     @property
     def redirect_to_page(self):
-        return f'главную страницу'
+        return 'главную страницу'

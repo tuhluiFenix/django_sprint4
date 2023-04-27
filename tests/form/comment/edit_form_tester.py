@@ -6,4 +6,3 @@ class EditCommentFormTester(CommentFormTester):
     @property
     def of_which_action(self):
         return 'редактирования'
-
