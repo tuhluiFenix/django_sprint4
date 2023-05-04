@@ -7,9 +7,11 @@ from typing import Tuple, Type, List
 
 import django.test.client
 import pytest
+import pytz
 from django.db.models import Model, ImageField
 from django.forms import BaseForm
 from django.http import HttpResponse
+from django.utils import timezone
 
 from blog.models import Post
 from conftest import (
@@ -41,9 +43,10 @@ class TestPostModelAttrs(_TestModelAttrs):
 
 @pytest.mark.django_db(transaction=True)
 def test_post_created_at(post_with_published_location):
+    now = timezone.now()
+    now_utc = now.astimezone(pytz.UTC).replace(tzinfo=None)
     assert abs(
-        post_with_published_location.created_at.replace(tzinfo=None)
-        - datetime.datetime.now().replace(tzinfo=None)
+        post_with_published_location.created_at.replace(tzinfo=None) - now_utc
     ) < datetime.timedelta(seconds=1), (
         'Убедитесь, что при создании публикации ей присваиваются '
         'текущие дата и время.'

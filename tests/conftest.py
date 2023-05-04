@@ -1,7 +1,10 @@
+import os
 import re
+import time
 from collections import namedtuple
 from http import HTTPStatus
 from inspect import getsource
+from pathlib import Path
 from typing import Iterable, Type, Optional, Union, Any, Tuple
 
 import pytest
@@ -300,3 +303,22 @@ def get_field_key(
         return (field_type.__name__, field.related_model.__name__)
     else:
         return (field_type.__name__, None)
+
+
+
+@pytest.fixture(scope='session', autouse=True)
+def cleanup(request):
+    start_time = time.time()
+
+    yield
+
+    from blog.models import Post
+    from blogicum import settings
+    image_dir =  Path(settings.__file__).parent.parent / settings.MEDIA_ROOT / Post.image.field.upload_to
+
+    for filename in os.listdir(image_dir):
+        if filename.endswith('.jpg') or filename.endswith('.gif'):
+            file_path = os.path.join(image_dir, filename)
+
+            if os.path.getctime(file_path) >= start_time:
+                os.remove(file_path)

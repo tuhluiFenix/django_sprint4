@@ -5,8 +5,10 @@ from typing import Tuple, Any, Type
 
 import django.test.client
 import pytest
+import pytz
 from django.db.models import TextField, DateTimeField, ForeignKey, Model
 from django.forms import BaseForm
+from django.utils import timezone
 
 from conftest import _TestModelAttrs, KeyVal, get_a_post_get_response_safely
 from fixtures.types import CommentModelAdapterT
@@ -38,9 +40,10 @@ class TestCommentModelAttrs(_TestModelAttrs):
 
 @pytest.mark.django_db(transaction=True)
 def test_comment_created_at(comment, CommentModelAdapter):
+    now = timezone.now()
+    now_utc = now.astimezone(pytz.UTC).replace(tzinfo=None)
     assert abs(
-        comment.created_at.replace(tzinfo=None)
-        - datetime.datetime.now().replace(tzinfo=None)
+        comment.created_at.replace(tzinfo=None) - now_utc
     ) < datetime.timedelta(seconds=1), (
         'Убедитесь, что при создании комментария ему присваиваются '
         'текущие дата и время.'
