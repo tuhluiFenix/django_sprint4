@@ -312,13 +312,12 @@ def cleanup(request):
 
     yield
 
-    from blog.models import Post
     from blogicum import settings
-    image_dir =  Path(settings.__file__).parent.parent / settings.MEDIA_ROOT / Post.image.field.upload_to
+    image_dir =  Path(settings.__file__).parent.parent / settings.MEDIA_ROOT
 
-    for filename in os.listdir(image_dir):
-        if filename.endswith('.jpg') or filename.endswith('.gif'):
-            file_path = os.path.join(image_dir, filename)
-
-            if os.path.getctime(file_path) >= start_time:
-                os.remove(file_path)
+    for root, dirs, files in os.walk(image_dir):
+        for filename in files:
+            if filename.endswith('.jpg') or filename.endswith('.gif') or filename.endswith('.png'):
+                file_path = os.path.join(root, filename)
+                if os.path.getmtime(file_path) >= start_time:
+                    os.remove(file_path)

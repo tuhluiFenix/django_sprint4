@@ -7,12 +7,13 @@ import pytest
 from django.conf import settings
 from django.db.models import Model
 from django.http import HttpResponse
+from django.urls import URLPattern, URLResolver, get_resolver
 
 from adapters.user import UserModelAdapter
+from conftest import KeyVal, squash_code
 from form.find_urls import find_links_between_lines
 from form.user.edit_form_tester import EditUserFormTester
 from test_edit import _test_edit
-from conftest import KeyVal, squash_code
 
 
 class ManageProfileLinksException(Exception):
@@ -21,6 +22,7 @@ class ManageProfileLinksException(Exception):
 
 @pytest.mark.django_db
 def test_custom_err_handlers(client):
+
     try:
         from blogicum import urls as blogicum_urls
     except Exception:
@@ -32,6 +34,31 @@ def test_custom_err_handlers(client):
         raise AssertionError(
             'Убедитесь, что подключили маршруты для работы с пользователями '
             'из `django.contrib.auth.urls`.'
+        )
+
+    def search_url_patterns(substring):
+        resolver = get_resolver()
+        results = []
+
+        def search_patterns(head, patterns):
+            for pattern in patterns:
+                if isinstance(pattern, URLPattern):
+                    pattern_as_str = head + str(pattern.pattern)
+                    if substring in pattern_as_str:
+                        results.append(pattern)
+                elif isinstance(pattern, URLResolver):
+                    search_patterns(head + str(pattern.pattern), pattern.url_patterns)
+            return results
+
+        search_patterns(head='', patterns=resolver.url_patterns)
+
+        return results
+
+    registration_url = 'auth/registration/'
+    auth_registration_patterns = search_url_patterns(registration_url)
+    assert auth_registration_patterns, (
+            f'Убедитесь, что в головном файле с маршрутами '
+            f'переопределили маршрут `{registration_url}`.'
         )
 
     auth_templates = {
@@ -52,12 +79,6 @@ def test_custom_err_handlers(client):
             f'Убедитесь, что файл шаблона `{frpath}` существует.'
         )
 
-    registration_url = 'auth/registration/'
-    if 'auth/registration/' not in urls_src_squashed:
-        raise AssertionError(
-            f'Убедитесь, что в головном файле с маршрутами '
-            f'переопределили маршрут `{registration_url}`.'
-        )
 
 
 @pytest.mark.django_db
