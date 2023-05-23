@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import re
 from abc import abstractmethod, ABC
 from functools import partial
 from http import HTTPStatus
 from typing import (
-    Set, Tuple, Type, Sequence, Callable, Optional, Dict, Iterable, Any, List)
+    Set, Tuple, Type, Sequence, Callable, Optional, Dict, Iterable, Any, List,
+    Union)
 
 import bs4
 import django.test
@@ -14,7 +16,8 @@ from django.forms import BaseForm
 from django.http import HttpResponse
 
 from conftest import (
-    ItemCreatedException, ItemNotCreatedException, restore_cleaned_data)
+    ItemCreatedException, ItemNotCreatedException, restore_cleaned_data,
+    TitledUrlRepr)
 from fixtures.types import ModelAdapterT
 from form.base_tester import BaseTester
 
@@ -65,11 +68,31 @@ class BaseFormTester(BaseTester):
     def of_which_form(self):
         return f'формы для {self.of_which_action} {self.of_which_obj}'
 
-    def redirect_error_message(self, by_user: str, redirect_to_page: str):
+    @property
+    def unauthorized_edit_redirect_cbk(self):
+        return None
+
+    @property
+    def anonymous_edit_redirect_cbk(self):
+        return None
+
+    def redirect_error_message(self, by_user: str,
+                               redirect_to_page: Union[TitledUrlRepr, str]):
+        if isinstance(redirect_to_page, str):
+            redirect_to_page_repr = redirect_to_page
+        elif isinstance(redirect_to_page, tuple):  # expected TitledUrlRepr
+            (
+                redirect_pattern, redirect_repr
+            ), redirect_title = redirect_to_page
+            redirect_to_page_repr = f'{redirect_title} ({redirect_repr})'
+        else:
+            raise AssertionError(
+                f'Unexpected value type `{type(redirect_to_page)}` '
+                f'for `redirect_to_page`')
         return (
             f'Убедитесь, что при отправке {self.of_which_form} '
             f'{self.on_which_page} {by_user} '
-            f'он перенаправляется на {redirect_to_page}.'
+            f'он перенаправляется на {redirect_to_page_repr}.'
         )
 
     def status_error_message(self, by_user: str):
@@ -171,9 +194,7 @@ class BaseFormTester(BaseTester):
                 form, qs,
                 AnonymousSubmitTester(
                     self,
-                    test_response_cbk=(
-                        AnonymousSubmitTester.get_test_response_redirect_cbk(
-                            tester=self))),
+                    test_response_cbk=None),
                 assert_created=False)
 
         except ItemCreatedException:
@@ -312,11 +333,7 @@ class BaseFormTester(BaseTester):
             self.another_user_client,
             submitter=UnauthorizedSubmitTester(
                 tester=self,
-                test_response_cbk=(
-                    UnauthorizedSubmitTester.get_test_response_redirect_cbk(
-                        tester=self,
-                        redirect_to_page='страницу публикации'
-                    ))),
+                test_response_cbk=self.unauthorized_edit_redirect_cbk),
             item_adapter=item_adapter, updated_form=updated_form)
         assert can_edit is not True, (
             f'Убедитесь, что редактирование {self.of_which_obj} недоступно '
@@ -326,10 +343,7 @@ class BaseFormTester(BaseTester):
             self.unlogged_client,
             submitter=AnonymousSubmitTester(
                 tester=self,
-                test_response_cbk=(
-                    AnonymousSubmitTester.get_test_response_redirect_cbk(
-                        tester=self
-                    ))),
+                test_response_cbk=self.anonymous_edit_redirect_cbk),
             item_adapter=item_adapter, updated_form=updated_form)
         assert can_edit is not True, (
             f'Убедитесь, что редактирование {self.of_which_obj} недоступно '
@@ -386,7 +400,8 @@ class SubmitTester(ABC):
     def test_submit(self, url: str, data: dict) -> HttpResponse:
         assert isinstance(self.client, django.test.Client)
         response = self.client.post(url, data=data, follow=True)
-        self._test_response_cbk(response)
+        if self._test_response_cbk:
+            self._test_response_cbk(response)
         return response
 
     @staticmethod
@@ -395,7 +410,7 @@ class SubmitTester(ABC):
             err_msg: str,
             assert_status_in: Sequence[int] = tuple(),
             assert_status_not_in: Sequence[int] = tuple(),
-            assert_redirect: Optional[bool] = None,
+            assert_redirect: Optional[Union[TitledUrlRepr, bool]] = None,
     ):
         if assert_status_in and response.status_code not in assert_status_in:
             raise AssertionError(err_msg)
@@ -405,18 +420,27 @@ class SubmitTester(ABC):
         if assert_redirect is not None and assert_redirect:
             assert hasattr(response, 'redirect_chain') and getattr(
                 response, 'redirect_chain'), err_msg
+            if isinstance(assert_redirect, tuple):  # expected TitledUrlRepr
+                (redirect_pattern,
+                 redirect_repr), redirect_title = assert_redirect
+                redirect_match = False
+                for redirect_url, _ in response.redirect_chain:
+                    if re.match(redirect_pattern, redirect_url):
+                        redirect_match = True
+                        break
+                assert redirect_match, err_msg
 
     @staticmethod
     def get_test_response_redirect_cbk(
             tester: BaseTester,
-            redirect_to_page: str,
+            redirect_to_page: Union[TitledUrlRepr, str],
             by_user: Optional[str] = None
     ):
         by_user = by_user or 'пользователь'
         return partial(
             SubmitTester.test_response_cbk,
             assert_status_in=(HTTPStatus.OK,),
-            assert_redirect=True,
+            assert_redirect=redirect_to_page,
             err_msg=tester.redirect_error_message(by_user, redirect_to_page))
 
     @staticmethod
@@ -498,7 +522,7 @@ class UnauthorizedSubmitTester(SubmitTester):
     @staticmethod
     def get_test_response_redirect_cbk(
             tester: BaseTester,
-            redirect_to_page: str,
+            redirect_to_page: Union[TitledUrlRepr, str],
             by_user: Optional[str] = None
     ):
         return SubmitTester.get_test_response_redirect_cbk(

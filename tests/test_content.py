@@ -12,7 +12,9 @@ from mixer.main import Mixer
 
 from adapters.model_adapter import ModelAdapter
 from adapters.post import PostModelAdapter
-from conftest import N_PER_PAGE, UrlRepr, _testget_context_item_by_class
+from conftest import (
+    N_PER_PAGE, UrlRepr, _testget_context_item_by_class,
+    _testget_context_item_by_key)
 
 pytestmark = [
     pytest.mark.django_db
@@ -89,6 +91,13 @@ class ContentTester:
     def of_which_page(self):
         ...
 
+    @property
+    @abstractmethod
+    def items_hardcoded_key(self):
+        raise NotImplementedError(
+            'Override `items_hardcoded_key` property '
+            'in ContentTester`s child class')
+
     def raise_assert_page_loads_cbk(self):
         raise AssertionError(
             f'Убедитесь, что {self.which_page} загружается без ошибок.')
@@ -99,10 +108,30 @@ class ContentTester:
             assert_cbk: Union[Callable[[], None], str] = (
                     'raise_assert_page_loads_cbk')
     ) -> HttpResponse:
+        return self._testget(self.user_client, url, assert_status_in,
+                             assert_cbk)
+
+    def another_client_testget(
+            self, url: Optional[str] = None,
+            assert_status_in: Tuple[int] = (200,),
+            assert_cbk: Union[Callable[[], None], str] = (
+                    'raise_assert_page_loads_cbk')
+    ) -> HttpResponse:
+        return self._testget(self.another_user_client, url, assert_status_in,
+                             assert_cbk)
+
+    def _testget(
+            self,
+            client,
+            url: Optional[str] = None,
+            assert_status_in: Tuple[int] = (200,),
+            assert_cbk: Union[
+                Callable[[], None], str] = 'raise_assert_page_loads_cbk'
+    ) -> HttpResponse:
 
         url = url or self.page_url.url
         try:
-            response = self.user_client.get(url)
+            response = client.get(url)
             if response.status_code not in assert_status_in:
                 raise Exception
         except Exception:
@@ -130,9 +159,7 @@ class ContentTester:
                 location=temp_location,
                 category=temp_category)
             setup_items.extend([temp_category, temp_location, temp_post])
-            url_repr = UrlRepr(
-                f'/category/{temp_category.slug}/',
-                '/category/<category_slug>/')
+            url_repr = self.page_url
             return url_repr
 
         def teardown(setup_items: List[Model]):
@@ -142,17 +169,27 @@ class ContentTester:
 
         setup_items = []
 
-        key_missing_msg = (
-            f'Убедитесь, что в словарь контекста {self.of_which_page} '
-            f'передаются {self.which_objs}.'
-        )
         try:
             url_repr = setup_for_url(setup_items)
-            key_val = _testget_context_item_by_class(
-                self.user_client_testget(url=url_repr.url).context,
-                self.item_cls,
-                err_msg=key_missing_msg, inside_iter=True
-            )
+            context = self.user_client_testget(url=url_repr.url).context
+            if self.items_hardcoded_key:
+                key_val = _testget_context_item_by_key(
+                    context, self.items_hardcoded_key, err_msg=(
+                        'Убедитесь, что в словарь контекста '
+                        f'{self.of_which_page} '
+                        f'{self.which_objs} передаются под ключом '
+                        f'`{self.items_hardcoded_key}`.'
+                    ))
+            else:
+                key_val = _testget_context_item_by_class(
+                    context,
+                    self.item_cls,
+                    err_msg=(
+                        'Убедитесь, что существует ровно один ключ, '
+                        'под которым в словарь контекста '
+                        f'{self.of_which_page} '
+                        f'передаются {self.which_objs}.'
+                    ), inside_iter=True)
         finally:
             teardown(setup_items)
 
@@ -187,6 +224,10 @@ class PostContentTester(ContentTester):
     @property
     def of_which_objs(self):
         return 'публикаций'
+
+    @property
+    def items_hardcoded_key(self):
+        return 'page_obj'
 
 
 class ProfilePostContentTester(PostContentTester):
@@ -264,7 +305,8 @@ def profile_content_tester(
 ) -> ProfilePostContentTester:
     url_repr = UrlRepr(f'/profile/{user.username}/', '/profile/<username>/')
     return ProfilePostContentTester(
-        mixer, PostModel, PostModelAdapter, user_client, url_repr)
+        mixer, PostModel, PostModelAdapter, user_client, url_repr,
+        another_user_client)
 
 
 @pytest.fixture
@@ -310,11 +352,16 @@ class TestContent:
 
         for tester in (self.main_tester, self.category_tester):
             response = tester.user_client_testget()
-            context_posts = response.context.get(tester.items_key)
-            assert len(context_posts) == 0, (
-                f'Убедитесь, что {tester.on_which_page} не отображаются '
-                f'{tester.which_objs}, снятые с публикации.'
-            )
+            try:
+                items_key = tester.items_key
+            except AssertionError:
+                pass
+            else:
+                context_posts = response.context.get(items_key)
+                assert len(context_posts) == 0, (
+                    f'Убедитесь, что {tester.on_which_page} не отображаются '
+                    f'{tester.which_objs}, снятые с публикации.'
+                )
 
     def test_unpublished_category(
             self, user_client, posts_with_unpublished_category
@@ -359,10 +406,15 @@ class TestContent:
 
         for tester in (self.main_tester, self.category_tester):
             response = tester.user_client_testget()
-            context_posts = response.context.get(tester.items_key)
-            assert len(context_posts) == 0, (
-                f'Убедитесь, что {tester.on_which_page} не отображаются '
-                f'отложенные {tester.which_objs}.')
+            try:
+                items_key = tester.items_key
+            except AssertionError:
+                pass
+            else:
+                context_posts = response.context.get(items_key)
+                assert len(context_posts) == 0, (
+                    f'Убедитесь, что {tester.on_which_page} не отображаются '
+                    f'отложенные {tester.which_objs}.')
 
     def test_pagination(self, user_client,
                         many_posts_with_published_locations):
@@ -372,10 +424,27 @@ class TestContent:
         assert len(posts) > self.main_tester.n_per_page
         assert len(posts) > self.category_tester.n_per_page
 
-        for tester in (
-                self.profile_tester, self.main_tester, self.category_tester):
-            response = tester.user_client_testget()
+        for tester, response_get_func, which_context in (
+                (self.profile_tester, self.profile_tester.user_client_testget,
+                 'контекст страницы профиля автора'),
+                (self.profile_tester,
+                 self.profile_tester.another_client_testget,
+                 'контекст страницы профиля автора'),
+                (self.main_tester, self.main_tester.user_client_testget,
+                 'контекст главной страницы'),
+                (
+                        self.category_tester,
+                        self.category_tester.user_client_testget,
+                        'контекст страницы категории')):
+            response = response_get_func()
             context_posts = response.context.get(tester.items_key)
+            pub_dates = [x.pub_date for x in context_posts]
+            if pub_dates != sorted(pub_dates, reverse=True):
+                raise AssertionError(
+                    f'Убедитесь, что публикации передаются в {which_context} '
+                    'отсортированными по времени их публикации, '
+                    '«от старых к новым».'
+                )
             expected_n = tester.n_or_page_size(len(posts))
             assert len(context_posts) == expected_n, (
                 f'Убедитесь, что {tester.on_which_page} работает пагинация.')

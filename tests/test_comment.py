@@ -104,7 +104,7 @@ def test_comment(
     index_content = user_client.get('/').content.decode('utf-8')
     if f'({len(created_items)})' not in index_content:
         raise AssertionError(
-            f'Убедитесь, что у публикаций на главной странице '
+            'Убедитесь, что у публикаций на главной странице '
             'отображается количество комментариев. '
             'Оно должно быть указано в круглых скобках.'
         )

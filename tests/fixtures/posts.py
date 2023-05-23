@@ -65,7 +65,8 @@ def post_comment_context_form_item(
     result: KeyVal = _testget_context_item_by_class(
         response.context, BaseForm, (
             'Убедитесь, что в словарь контекста шаблона '
-            'страницы публикации передаётся форма для создания комментария.'
+            'страницы публикации передаётся ровно одна форма '
+            'для создания комментария.'
         )
     )
     return result
@@ -79,7 +80,7 @@ def create_post_context_form_item(
     result: KeyVal = _testget_context_item_by_class(
         response.context, BaseForm, (
             'Убедитесь, что в словарь контекста шаблона '
-            'страницы создания публикации передаётся форма.'
+            'страницы создания публикации передаётся ровно одна форма.'
         )
     )
     return result

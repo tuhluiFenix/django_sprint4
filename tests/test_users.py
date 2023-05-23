@@ -22,7 +22,6 @@ class ManageProfileLinksException(Exception):
 
 @pytest.mark.django_db
 def test_custom_err_handlers(client):
-
     try:
         from blogicum import urls as blogicum_urls
     except Exception:
@@ -47,7 +46,8 @@ def test_custom_err_handlers(client):
                     if substring in pattern_as_str:
                         results.append(pattern)
                 elif isinstance(pattern, URLResolver):
-                    search_patterns(head + str(pattern.pattern), pattern.url_patterns)
+                    search_patterns(head + str(pattern.pattern),
+                                    pattern.url_patterns)
             return results
 
         search_patterns(head='', patterns=resolver.url_patterns)
@@ -57,9 +57,9 @@ def test_custom_err_handlers(client):
     registration_url = 'auth/registration/'
     auth_registration_patterns = search_url_patterns(registration_url)
     assert auth_registration_patterns, (
-            f'Убедитесь, что в головном файле с маршрутами '
-            f'переопределили маршрут `{registration_url}`.'
-        )
+        f'Убедитесь, что в головном файле с маршрутами '
+        f'переопределили маршрут `{registration_url}`.'
+    )
 
     auth_templates = {
         'logged_out.html',
@@ -78,7 +78,6 @@ def test_custom_err_handlers(client):
         assert os.path.isfile(fpath.resolve()), (
             f'Убедитесь, что файл шаблона `{frpath}` существует.'
         )
-
 
 
 @pytest.mark.django_db

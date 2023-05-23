@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Type, Optional
+from typing import Type, Optional, Union
 
 from django.db.models import Model
 from django.test import Client
 
+from conftest import TitledUrlRepr
 from fixtures.types import ModelAdapterT
 
 
@@ -40,7 +41,8 @@ class BaseTester(ABC):
         return f'на страницу {self.of_which_action} {self.of_which_obj}'
 
     @abstractmethod
-    def redirect_error_message(self, by_user: str, redirect_to_page: str):
+    def redirect_error_message(
+            self, by_user: str, redirect_to_page: Union[TitledUrlRepr, str]):
         ...
 
     @abstractmethod

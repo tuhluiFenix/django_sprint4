@@ -9,15 +9,16 @@ def test_static_pages_as_cbv():
         )
     try:
         from pages.urls import urlpatterns
-    except Exception as e:
+    except Exception:
         raise AssertionError(
             'Убедитесь, что в файле `pages/urls.py` задан список urlpatterns.'
         )
     try:
         from pages.urls import app_name
-    except Exception as e:
+    except Exception:
         raise AssertionError(
-            'Убедитесь, что в файле `pages/urls.py` определена глобальная переменная `app_name`, '
+            'Убедитесь, что в файле `pages/urls.py` '
+            'определена глобальная переменная `app_name`, '
             'задающая пространство имён url для приложения `pages`.'
         )
     for path in urlpatterns:
