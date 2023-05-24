@@ -443,7 +443,7 @@ class TestContent:
                 raise AssertionError(
                     f'Убедитесь, что публикации передаются в {which_context} '
                     'отсортированными по времени их публикации, '
-                    '«от старых к новым».'
+                    '«от новых к старым».'
                 )
             expected_n = tester.n_or_page_size(len(posts))
             assert len(context_posts) == expected_n, (
