@@ -13,6 +13,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Model, Field
 from django.forms import BaseForm
 from django.http import HttpResponse
+from django.test import override_settings
 from django.test.client import Client
 from mixer.backend.django import mixer as _mixer
 
@@ -20,9 +21,15 @@ N_PER_FIXTURE = 3
 N_PER_PAGE = 10
 COMMENT_TEXT_DISPLAY_LEN_FOR_TESTS = 50
 
-KeyVal = NamedTuple('KeyVal', [('key', str), ('val', str)])
+KeyVal = NamedTuple('KeyVal', [('key', Optional[str]), ('val', Optional[str])])
 UrlRepr = NamedTuple('UrlRepr', [('url', str), ('repr', str)])
 TitledUrlRepr = TypeVar('TitledUrlRepr', bound=Tuple[UrlRepr, str])
+
+
+@pytest.fixture(autouse=True)
+def enable_debug_false():
+    with override_settings(DEBUG=False):
+        yield
 
 
 class SafeImportFromContextManager:
@@ -292,6 +299,8 @@ def _testget_context_item_by_key(
 
 def get_page_context_form(user_client: Client, page_url: str) -> KeyVal:
     response = user_client.get(page_url)
+    if not str(response.status_code).startswith('2'):
+        return KeyVal(key=None, val=None)
     return _testget_context_item_by_class(
         response.context, BaseForm, ''
     )

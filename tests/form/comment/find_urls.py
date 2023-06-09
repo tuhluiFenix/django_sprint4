@@ -60,7 +60,27 @@ def find_edit_and_delete_urls(
 
     edit_link, del_link = comment_links[0], comment_links[1]
 
+    def assert_comment_links_return_same_get_status(_comment_links):
+        get_request_status_codes = []
+        try:
+            for comment_link in _comment_links:
+                get_request_status_codes.append(user_client.get(comment_link.get('href')).status_code)
+            return all(x == get_request_status_codes[0] for x in get_request_status_codes)
+        except Exception:
+            return False
+
+    assert assert_comment_links_return_same_get_status(comment_links), (
+        'Страницы удаления и редактирования комментария должны иметь идентичные права доступа. '
+        'Убедитесь, что GET-запрос к этим страницам возвращает один и тот же статус и не удаляет комментарий.'
+    )
+
+    # Make sure GET requests to urls in `comment_links` do not delete the comment (comment & delete are GET-idempotent):
+    assert assert_comment_links_return_same_get_status(comment_links), (
+        'Убедитесь, что GET-запрос к страницам удаления и редактирования комментария не удаляет комментарий.'
+    )
+
     if get_page_context_form(user_client, comment_links[0].get('href')).key:
+        # Found a link leading to a form, let's make sure the other one doesn't
         assert not get_page_context_form(
             user_client, comment_links[1].get('href')).key, (
             'Убедитесь, что в словарь контекста шаблона страницы удаления '
