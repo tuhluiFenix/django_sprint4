@@ -15,8 +15,13 @@ SECRET_KEY = (
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-LOGIN_REDIRECT_URL = 'blog:index'
-LOGIN_URL = 'login'
+INTERNAL_IPS = ['127.0.0.1',]
+
+MEDIA_ROOT = BASE_DIR / 'media'
+
+DATE_FORMAT = 'dd.mm.yyyy'
+
+CSRF_FAILURE_VIEW = 'pages.views.csrf_failure' 
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -26,7 +31,18 @@ ALLOWED_HOSTS = [
     # например 'acme.not' и 'www.acme.not'
 ] 
 
-CSRF_FAILURE_VIEW = 'pages.views.csrf_failure' 
+LOGIN_REDIRECT_URL = "blog:index"
+LOGIN_URL = 'login'
+
+EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
+
+EMAIL_FILE_PATH = BASE_DIR / 'sent_emails'
+
+
+
+
+
+
 
 # Application definition
 
@@ -120,7 +136,7 @@ USE_L10N = True
 
 USE_TZ = True
 
-MEDIA_ROOT = BASE_DIR / 'media'
+
 
 STATICFILES_DIRS = [
     BASE_DIR / "static",

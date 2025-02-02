@@ -1,14 +1,14 @@
 from django.shortcuts import  get_object_or_404
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DetailView, DeleteView
 from blog.models import Post, User, Category, Comment
-from . forms import PostForm, UserProfileForm
+from . forms import PostForm, UserProfileForm, CommentForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.shortcuts import redirect
 from django.db.models import Count
 from django.contrib.auth.mixins import LoginRequiredMixin
-
+from blog.managers import PostManager, PostQuerySet
 NUM_ON_MAIN = 10
 
 
@@ -17,7 +17,11 @@ class OnlyAuthorMixin(UserPassesTestMixin):  # Миксин только для 
     def test_func(self):
         obj = self.get_object()
         return obj.author == self.request.user
-
+    
+class CommentEditMixin: # миксин для комментов
+    model = Comment
+    pk_url_kwarg = "comment_pk"
+    template_name = "blog/comment.html"
 
 
 class MaintListView(ListView): # Красава работяга, работает, НЕ ТРОГАТЬ111!!
@@ -43,11 +47,12 @@ class ProfileListView(ListView):  # Отображает профиль  нор�
     model = Post
     template_name = 'blog/profile.html'
     paginate_by = NUM_ON_MAIN
+    context_object_name = 'page_obj'
 
     def get_queryset(self):
         username = self.kwargs["username"]
         self.author = get_object_or_404(User, username=username)
-        return Post.objects.filter(author=self.author)
+        return Post.objects.select_related("location", "category").filter(author=self.author)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -55,6 +60,7 @@ class ProfileListView(ListView):  # Отображает профиль  нор�
             User, username=self.kwargs["username"]
         )
         return context
+
 
 
 class EditProfileView(OnlyAuthorMixin, UpdateView):
@@ -96,38 +102,54 @@ class PostCreateView(LoginRequiredMixin, CreateView): # Заебись рабо�
         return reverse('blog:profile', kwargs={"username": username})
 
 
-class PostDetailView(DetailView): # Не работаеть, пофиксить(Удаление, редактирование и читать дальше не работает че за хуйня??)
+class PostDetailView(DetailView): # Работает молодец и удалит и отредактирует и на главную страницу вернуть сможет!!!
     model = Post
     template_name = 'blog/detail.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["form"] = CommentForm()
+        context["comments"] = (
+            self.get_object().comments.prefetch_related("author").all()
+        )
         return context
 
-    def test_func(self):
-        obj = self.get_object()
-        return obj.author == self.request.user
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .prefetch_related(
+                "comments",
+            )
+        )
 
 
 
 
 
-class PostCategoryListView(ListView):#не работает изза эдит пост, созависимая тварь
+class PostCategoryListView(ListView):# Не работает никак, из-за нее не отображается посты автора
     model = Post
     template_name = "blog/category.html"
+    context_object_name = "post_list"
+    paginate_by = NUM_ON_MAIN
 
     def get_queryset(self):
-        slug = self.kwargs["slug"]
-        self.category = get_object_or_404(Category, slug=slug, is_published=True)
+        # Get the category slug from the URL
+        slug = self.kwargs['category_slug'] #если категори слаг то отображается список постов в определенной категории
+        # Fetch the category object
+        self.category = get_object_or_404(Category, slug=slug)
+        # Filter posts by the category
         return Post.objects.filter(category=self.category)
 
     def get_context_data(self, **kwargs):
+        # Add the category to the context for use in the template
         context = super().get_context_data(**kwargs)
-        context["category"] = self.category
+        context['category'] = self.category
         return context
 
 
-class PostUpdateView(OnlyAuthorMixin, UpdateView):#не работает изза эдит пост, созависимая тварь
+
+class PostUpdateView(OnlyAuthorMixin, UpdateView):# Работает хорошо, но причем тут планета Земля??
     model = Post
     form_class = PostForm
     template_name = "blog/create.html"
@@ -141,36 +163,62 @@ class PostUpdateView(OnlyAuthorMixin, UpdateView):#не работает изз�
         return reverse("blog:post_detail", kwargs={"pk": self.object.pk})  # Используем pk объекта
 
 
-class PostDeleteView(OnlyAuthorMixin, DeleteView):# ХЗ работает или нет, но вроде из-за сук выше не видно работы этого мелкого
+class PostDeleteView(OnlyAuthorMixin, DeleteView):# Работает и молодец и возвращает на главную
     model = Post
-    template_name = 'blog/comment.html'
-    def get_success_url(self):
-        return reverse('blog:index')  # Перенаправление на главную страницу после удаления
+    template_name = "blog/create.html"
+    success_url = reverse_lazy("blog:index")
+    queryset = Post.objects.select_related("author", "location", "category")
+    def delete(self, request, *args, **kwargs):
+        post = get_object_or_404(Post, pk=self.kwargs["pk"])
+        if self.request.user != post.author:
+            return redirect("blog:index")
+
+        return super().delete(request, *args, **kwargs) # Перенаправление на главную страницу после удаления
 
 """Классы для комментов"""
 
-class CommentCreateView(CreateView):
-    pass
+class CommentCreateView(CommentEditMixin, LoginRequiredMixin, CreateView): #Работает нормально
+    model = Comment
+    form_class = CommentForm
 
-class CommentDeleteview(DeleteView):
-    pass
+    def form_valid(self, form):
+        form.instance.post = get_object_or_404(Post, pk=self.kwargs["pk"])
+        form.instance.author = self.request.user
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("blog:post_detail", kwargs={"pk": self.kwargs["pk"]})
 
 
 
 
 
+class CommentUpdateView(CommentEditMixin, LoginRequiredMixin, UpdateView):# работает как надо, красава
+    form_class = CommentForm
+
+    def dispatch(self, request, *args, **kwargs):
+        if (
+            self.request.user
+            != Comment.objects.get(pk=self.kwargs["comment_pk"]).author
+        ):
+            return redirect("blog:post_detail", pk=self.kwargs["pk"])
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_success_url(self):
+        return reverse("blog:post_detail", kwargs={"pk": self.kwargs["pk"]})
+    
 
 
 
+class CommentDeleteView(CommentEditMixin, LoginRequiredMixin, DeleteView):# работяга работаем метро Люблино
+    fields = "__all__"
+    
 
-'''class PostListView(ListView):
-    model = Post
-    template_name = 'blog/index.html'
-    ordering = 'id'
-
-    def get_queryset(self):
-        return Post.published_posts
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["post"] = self.object_list
-        return context'''
+    def delete(self, request, *args, **kwargs):
+        comment = get_object_or_404(Comment, pk=self.kwargs["comment_pk"])
+        if self.request.user != comment.author:
+            return redirect("blog:post_detail", pk=self.kwargs["pk"])
+        return super().delete(request, *args, **kwargs)
+    def get_success_url(self):
+        return reverse("blog:post_detail", kwargs={"pk": self.kwargs["pk"]})
