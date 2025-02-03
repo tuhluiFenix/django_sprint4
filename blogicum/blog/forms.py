@@ -5,8 +5,9 @@ from .models import Post, User, Comment
 class UserProfileForm(forms.ModelForm):
     """Форма для Юзера."""
 
-    model = User
-    fields = ('username', 'first_name', 'last_name', 'emil',)
+    class Meta:
+        model = User
+        fields = ("first_name", "last_name", "username", "email")
 
 
 class PostForm(forms.ModelForm):

@@ -9,6 +9,7 @@ from django.shortcuts import redirect
 from django.db.models import Count
 from django.contrib.auth.mixins import LoginRequiredMixin
 from blog.managers import PostManager, PostQuerySet
+
 NUM_ON_MAIN = 10
 
 
@@ -42,43 +43,33 @@ class MaintListView(ListView): # Красава работяга, работае
 """Классы отвечающие за профиль."""
 
 
-class ProfileListView(ListView):  # Отображает профиль  нормально не работает. Постоянно ошибки
+class ProfileListView(MaintListView):  # Информация о пользователе доступна всем посетителям сайта
 
     model = Post
     template_name = 'blog/profile.html'
-    paginate_by = NUM_ON_MAIN
-    context_object_name = 'page_obj'
+
 
     def get_queryset(self):
         username = self.kwargs["username"]
         self.author = get_object_or_404(User, username=username)
-        return Post.objects.select_related("location", "category").filter(author=self.author)
+        return super().get_queryset().filter(author=self.author).annotate(comment_count=Count("comments")).order_by('-pub_date')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["profile"] = get_object_or_404(
-            User, username=self.kwargs["username"]
-        )
+        context["profile"] = self.author
         return context
 
-
-
-class EditProfileView(OnlyAuthorMixin, UpdateView):
-    model = User  # Для редактирования профиля(нет редактирования потому что я не существует профиля)
+class EditProfileView(LoginRequiredMixin, UpdateView):# Редактирование профиля доступно только для залогиненного пользователя, хозяина аккаунта
+    model = User
     form_class = UserProfileForm
-    template_name = 'blog/user.html'
+    template_name = "blog/user.html"
 
-    def test_func(self):
-        # Получаем текущий объект.
-        object = self.get_object()
-        # Метод вернёт True или False.
-        # Если пользователь - автор объекта, то тест будет пройден.
-        # Если нет, то будет вызвана ошибка 403.
-        return object.author == self.request.user
+    def get_object(self, queryset=None):
+        return self.request.user
 
-    def dispatch(self, request, *args, **kwargs):
-        self.user = get_object_or_404(User, pk=kwargs['pk'])
-        return super().dispatch(request, *args, **kwargs)
+    def get_success_url(self):
+        username = self.request.user
+        return reverse("blog:profile", kwargs={"username": username})
 
 
 
@@ -87,7 +78,7 @@ class EditProfileView(OnlyAuthorMixin, UpdateView):
 """Классы отвечающие за посты"""
 
 
-class PostCreateView(LoginRequiredMixin, CreateView): # Заебись работает норм. НЕ ТРОГАТЬ!!11
+class PostCreateView(LoginRequiredMixin, CreateView): # Для зарегистрированных пользователей
     """Создание поста, назначение автора и вывод usename."""
     model = Post
     form_class = PostForm
@@ -102,7 +93,7 @@ class PostCreateView(LoginRequiredMixin, CreateView): # Заебись рабо�
         return reverse('blog:profile', kwargs={"username": username})
 
 
-class PostDetailView(DetailView): # Работает молодец и удалит и отредактирует и на главную страницу вернуть сможет!!!
+class PostDetailView(DetailView): # доступно для всех пользователей
     model = Post
     template_name = 'blog/detail.html'
 
@@ -127,29 +118,28 @@ class PostDetailView(DetailView): # Работает молодец и удал�
 
 
 
-class PostCategoryListView(ListView):# Не работает никак, из-за нее не отображается посты автора
+class PostCategoryListView(MaintListView, ListView):# Публикации пользователя доступны все посетителям
     model = Post
     template_name = "blog/category.html"
     context_object_name = "post_list"
     paginate_by = NUM_ON_MAIN
 
     def get_queryset(self):
-        # Get the category slug from the URL
+        # возвращает категорию слаг
         slug = self.kwargs['category_slug'] #если категори слаг то отображается список постов в определенной категории
-        # Fetch the category object
         self.category = get_object_or_404(Category, slug=slug)
-        # Filter posts by the category
-        return Post.objects.filter(category=self.category)
+        # Фильтрует посты по категориям
+        return Post.objects.filter(category=self.category).annotate(comment_count=Count('comments')).order_by('-pub_date')
 
     def get_context_data(self, **kwargs):
-        # Add the category to the context for use in the template
+        # Добавляет посты в контекст для использования в шаблонах
         context = super().get_context_data(**kwargs)
         context['category'] = self.category
         return context
 
 
 
-class PostUpdateView(OnlyAuthorMixin, UpdateView):# Работает хорошо, но причем тут планета Земля??
+class PostUpdateView(OnlyAuthorMixin, LoginRequiredMixin, UpdateView):# Работает хорошо, но причем тут планета Земля??
     model = Post
     form_class = PostForm
     template_name = "blog/create.html"
@@ -163,7 +153,7 @@ class PostUpdateView(OnlyAuthorMixin, UpdateView):# Работает хорош�
         return reverse("blog:post_detail", kwargs={"pk": self.object.pk})  # Используем pk объекта
 
 
-class PostDeleteView(OnlyAuthorMixin, DeleteView):# Работает и молодец и возвращает на главную
+class PostDeleteView(LoginRequiredMixin, OnlyAuthorMixin, DeleteView):# Работает и молодец и возвращает на главную
     model = Post
     template_name = "blog/create.html"
     success_url = reverse_lazy("blog:index")
@@ -177,7 +167,7 @@ class PostDeleteView(OnlyAuthorMixin, DeleteView):# Работает и моло
 
 """Классы для комментов"""
 
-class CommentCreateView(CommentEditMixin, LoginRequiredMixin, CreateView): #Работает нормально
+class CommentCreateView(CommentEditMixin, LoginRequiredMixin, CreateView): #Создание комментариев только для зарегистрироанных пользователей
     model = Comment
     form_class = CommentForm
 
@@ -193,7 +183,7 @@ class CommentCreateView(CommentEditMixin, LoginRequiredMixin, CreateView): #Ра
 
 
 
-class CommentUpdateView(CommentEditMixin, LoginRequiredMixin, UpdateView):# работает как надо, красава
+class CommentUpdateView(OnlyAuthorMixin, CommentEditMixin, UpdateView):# работает как надо, красава
     form_class = CommentForm
 
     def dispatch(self, request, *args, **kwargs):
@@ -211,9 +201,8 @@ class CommentUpdateView(CommentEditMixin, LoginRequiredMixin, UpdateView):# ра
 
 
 
-class CommentDeleteView(CommentEditMixin, LoginRequiredMixin, DeleteView):# работяга работаем метро Люблино
+class CommentDeleteView(OnlyAuthorMixin, CommentEditMixin, DeleteView):# работяга работаем метро Люблино
     fields = "__all__"
-    
 
     def delete(self, request, *args, **kwargs):
         comment = get_object_or_404(Comment, pk=self.kwargs["comment_pk"])
