@@ -76,6 +76,7 @@ class Post(PublishedModel):
         on_delete=models.SET_NULL,
     )
     image = models.ImageField('Фото', upload_to='post_images', blank=True)
+    
 
     objects = PostManager()  # Присваиваем менеджер
 

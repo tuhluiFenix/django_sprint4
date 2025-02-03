@@ -29,7 +29,7 @@ class MaintListView(ListView): # Красава работяга, работае
     """Класс отвечающий за отображение постов на главной странице"""
     model = Post
     template_name = 'blog/index.html'  # Ведет на главную страницу и отображает все опубликованные посты
-    context_object_name = 'page_obj'  # Имя переменной в контексте, которое будет использоваться в шаблоне
+    context_object_name = "post_list"  # Имя переменной в контексте, которое будет использоваться в шаблоне
     paginate_by = NUM_ON_MAIN  # Количество постов на странице
 
     def get_queryset(self):
@@ -44,7 +44,7 @@ class MaintListView(ListView): # Красава работяга, работае
 
 
 class ProfileListView(MaintListView):  # Информация о пользователе доступна всем посетителям сайта
-
+    context_object_name = 'posts'
     model = Post
     template_name = 'blog/profile.html'
 
@@ -53,6 +53,7 @@ class ProfileListView(MaintListView):  # Информация о пользов�
         username = self.kwargs["username"]
         self.author = get_object_or_404(User, username=username)
         return super().get_queryset().filter(author=self.author).annotate(comment_count=Count("comments")).order_by('-pub_date')
+
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -91,7 +92,7 @@ class PostCreateView(LoginRequiredMixin, CreateView): # Для зарегист�
     def get_success_url(self):
         username = self.request.user.username
         return reverse('blog:profile', kwargs={"username": username})
-
+    
 
 class PostDetailView(DetailView): # доступно для всех пользователей
     model = Post
@@ -202,12 +203,12 @@ class CommentUpdateView(OnlyAuthorMixin, CommentEditMixin, UpdateView):# раб�
 
 
 class CommentDeleteView(OnlyAuthorMixin, CommentEditMixin, DeleteView):# работяга работаем метро Люблино
-    fields = "__all__"
 
     def delete(self, request, *args, **kwargs):
         comment = get_object_or_404(Comment, pk=self.kwargs["comment_pk"])
         if self.request.user != comment.author:
             return redirect("blog:post_detail", pk=self.kwargs["pk"])
         return super().delete(request, *args, **kwargs)
+    
     def get_success_url(self):
         return reverse("blog:post_detail", kwargs={"pk": self.kwargs["pk"]})
