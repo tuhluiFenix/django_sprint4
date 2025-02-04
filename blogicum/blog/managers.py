@@ -11,11 +11,9 @@ class PostQuerySet(models.QuerySet):
             pub_date__lte=timezone.now()
         )
 
-
-class PostManager(models.Manager):
-    def get_queryset(self):
-        return PostQuerySet(self.model, using=self._db)
-
-    def published(self):
-        """Возвращает опубликованные посты."""
-        return self.get_queryset().published()
+    def annotated(self):
+        return self.annotate(
+            comment_count=models.Count('comments')
+        ).order_by('-pub_date').select_related(
+            'category', 'author', 'location',
+        )

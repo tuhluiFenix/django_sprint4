@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
 
-from .managers import PostManager
+from .managers import PostQuerySet
 
 User = get_user_model()
 
@@ -76,9 +76,8 @@ class Post(PublishedModel):
         on_delete=models.SET_NULL,
     )
     image = models.ImageField('Фото', upload_to='post_images', blank=True)
-    
 
-    objects = PostManager()  # Присваиваем менеджер
+    objects = PostQuerySet.as_manager()
 
     class Meta:
         verbose_name = "публикация"
@@ -91,14 +90,6 @@ class Post(PublishedModel):
     def __str__(self):
         return self.title
 
-    @classmethod
-    def published_posts(cls):
-        current_time = timezone.now()
-        return cls.objects.filter(
-            is_published=True,
-            category__is_published=True,
-            pub_date__lte=current_time
-        )
 
 class Comment(models.Model):
     text = models.TextField(
