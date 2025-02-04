@@ -1,6 +1,11 @@
 from django.shortcuts import get_object_or_404
 from django.urls import reverse, reverse_lazy
-from django.views.generic import ListView, CreateView, UpdateView, DetailView, DeleteView
+from django.views.generic import (
+    ListView,
+    CreateView,
+    UpdateView,
+    DetailView,
+    DeleteView)
 from blog.models import Post, User, Category, Comment
 from . forms import PostForm, UserProfileForm, CommentForm
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -11,35 +16,38 @@ from django.utils.timezone import now
 NUM_ON_MAIN = 10
 
 
-class OnlyAuthorMixin(UserPassesTestMixin):  # Миксин только для автора
+class OnlyAuthorMixin(UserPassesTestMixin):
 
     def test_func(self):
         obj = self.get_object()
         return obj.author == self.request.user
 
 
-class CommentEditMixin:  # миксин для комментов
+class CommentEditMixin:
     model = Comment
     pk_url_kwarg = "comment_pk"
     template_name = "blog/comment.html"
 
 
-class MaintListView(ListView): # Красава работяга, работает, НЕ ТРОГАТЬ111!!
+class MaintListView(ListView):
     """Класс отвечающий за отображение постов на главной странице"""
+
     model = Post
-    template_name = 'blog/index.html'  # Ведет на главную страницу и отображает все опубликованные посты
+    template_name = 'blog/index.html'
     paginate_by = NUM_ON_MAIN  # Количество постов на странице
 
     def get_queryset(self):
-        """Переопределяем метод для фильтрации и аннотации постов
-        с использованием кастомного менеджера."""
+        """
+        Переопределяем метод для фильтрации и аннотации постов
+        с использованием кастомного менеджера.
+        """
         return self.model.objects.published().annotated()
 
 
 """Классы отвечающие за профиль."""
 
 
-class ProfileListView(ListView):  # Информация о пользователе доступна всем посетителям сайта
+class ProfileListView(ListView):
     model = User
     template_name = 'blog/profile.html'
     context_object_name = 'profile'
@@ -62,7 +70,7 @@ class ProfileListView(ListView):  # Информация о пользовате
         return context
 
 
-class EditProfileView(LoginRequiredMixin, UpdateView):  # Редактирование профиля доступно только для залогиненного пользователя, хозяина аккаунта
+class EditProfileView(LoginRequiredMixin, UpdateView):
     model = User
     form_class = UserProfileForm
     template_name = "blog/user.html"
@@ -78,14 +86,15 @@ class EditProfileView(LoginRequiredMixin, UpdateView):  # Редактирова
 """Классы отвечающие за посты"""
 
 
-class PostCreateView(LoginRequiredMixin, CreateView):  # Для зарегистрированных пользователей
+class PostCreateView(LoginRequiredMixin, CreateView):
     """Создание поста, назначение автора и вывод usename."""
+
     model = Post
     form_class = PostForm
     template_name = 'blog/create.html'
 
     def form_valid(self, form):
-        form.instance.author = self.request.user  # Устанавливаем автора
+        form.instance.author = self.request.user
         return super().form_valid(form)
 
     def get_success_url(self):
@@ -93,7 +102,7 @@ class PostCreateView(LoginRequiredMixin, CreateView):  # Для зарегист
         return reverse('blog:profile', kwargs={"username": username})
 
 
-class PostDetailView(DetailView):  # доступно для всех пользователей
+class PostDetailView(DetailView):
     model = Post
     template_name = 'blog/detail.html'
 
@@ -123,7 +132,8 @@ class PostCategoryListView(MaintListView):  # Публикации пользо�
     template_name = "blog/category.html"
 
     def current_category(self):
-        return get_object_or_404(Category, slug=self.kwargs['category_slug'], is_published=True)
+        return get_object_or_404(
+            Category, slug=self.kwargs['category_slug'], is_published=True)
 
     def get_queryset(self):
         return self.current_category().posts.published().annotated()
@@ -135,7 +145,7 @@ class PostCategoryListView(MaintListView):  # Публикации пользо�
         return context
 
 
-class PostUpdateView(OnlyAuthorMixin, LoginRequiredMixin, UpdateView):  # Работает хорошо, но причем тут планета Земля??
+class PostUpdateView(OnlyAuthorMixin, LoginRequiredMixin, UpdateView):
     model = Post
     form_class = PostForm
     template_name = "blog/create.html"
@@ -146,7 +156,7 @@ class PostUpdateView(OnlyAuthorMixin, LoginRequiredMixin, UpdateView):  # Раб
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
-        return reverse("blog:post_detail", kwargs={"pk": self.object.pk})  # Используем pk объекта
+        return reverse("blog:post_detail", kwargs={"pk": self.object.pk})
 
 
 class PostDeleteView(LoginRequiredMixin, OnlyAuthorMixin, DeleteView):  # Работает и молодец и возвращает на главную
