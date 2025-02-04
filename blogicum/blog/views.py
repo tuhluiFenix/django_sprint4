@@ -197,7 +197,10 @@ class CommentUpdateView(OnlyAuthorMixin, CommentEditMixin, UpdateView):  # ра�
         return reverse("blog:post_detail", kwargs={"pk": self.kwargs["pk"]})
 
 
-class CommentDeleteView(OnlyAuthorMixin, CommentEditMixin, DeleteView):  # работяга работаем метро Люблино
+class CommentDeleteView(OnlyAuthorMixin, DeleteView):  # работяга работаем метро Люблино
+    model = Comment
+    pk_url_kwarg = "comment_pk"
+    template_name = "blog/comment.html"
 
     def delete(self, request, *args, **kwargs):
         comment = get_object_or_404(Comment, pk=self.kwargs["comment_pk"])
@@ -207,3 +210,9 @@ class CommentDeleteView(OnlyAuthorMixin, CommentEditMixin, DeleteView):  # ра�
 
     def get_success_url(self):
         return reverse("blog:post_detail", kwargs={"pk": self.kwargs["pk"]})
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Удаляем объект формы из контекста
+        context.pop('form', None)
+        return context
