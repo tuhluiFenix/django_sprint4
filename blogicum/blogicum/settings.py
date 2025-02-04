@@ -21,7 +21,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DATE_FORMAT = 'dd.mm.yyyy'
 
-CSRF_FAILURE_VIEW = 'pages.views.csrf_failure' 
+CSRF_FAILURE_VIEW = 'pages.views.csrf_failure'
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -29,7 +29,7 @@ ALLOWED_HOSTS = [
     # Когда проект будет опубликован и станет доступен для пользователей,
     # в этот список нужно будет добавить и адреса домена, где он будет размещён,
     # например 'acme.not' и 'www.acme.not'
-] 
+]
 
 LOGIN_REDIRECT_URL = "blog:index"
 LOGIN_URL = 'login'
@@ -37,12 +37,6 @@ LOGIN_URL = 'login'
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 
 EMAIL_FILE_PATH = BASE_DIR / 'sent_emails'
-
-
-
-
-
-
 
 # Application definition
 
@@ -57,7 +51,6 @@ INSTALLED_APPS = [
     "django_bootstrap5",
     "pages.apps.PagesConfig",
     "blog.apps.BlogConfig",
-    
 ]
 
 MIDDLEWARE = [
@@ -135,7 +128,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
-
 
 
 STATICFILES_DIRS = [
