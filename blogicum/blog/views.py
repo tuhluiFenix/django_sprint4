@@ -127,7 +127,7 @@ class PostDetailView(DetailView):
         )
 
 
-class PostCategoryListView(MaintListView):  # Публикации пользователя доступны все посетителям
+class PostCategoryListView(MaintListView):
     model = Category
     template_name = "blog/category.html"
 
@@ -159,7 +159,7 @@ class PostUpdateView(OnlyAuthorMixin, LoginRequiredMixin, UpdateView):
         return reverse("blog:post_detail", kwargs={"pk": self.object.pk})
 
 
-class PostDeleteView(LoginRequiredMixin, OnlyAuthorMixin, DeleteView):  # Работает и молодец и возвращает на главную
+class PostDeleteView(LoginRequiredMixin, OnlyAuthorMixin, DeleteView):
     model = Post
     template_name = "blog/create.html"
     success_url = reverse_lazy("blog:index")
@@ -170,12 +170,13 @@ class PostDeleteView(LoginRequiredMixin, OnlyAuthorMixin, DeleteView):  # Раб
         if self.request.user != post.author:
             return redirect("blog:index")
 
-        return super().delete(request, *args, **kwargs) # Перенаправление на главную страницу после удаления
+        return super().delete(request, *args, **kwargs)
 
 
 """Классы для комментов"""
 
-class CommentCreateView(CommentEditMixin, LoginRequiredMixin, CreateView):  # Создание комментариев только для зарегистрироанных пользователей
+
+class CommentCreateView(CommentEditMixin, LoginRequiredMixin, CreateView):
     model = Comment
     form_class = CommentForm
 
@@ -188,7 +189,7 @@ class CommentCreateView(CommentEditMixin, LoginRequiredMixin, CreateView):  # С
         return reverse("blog:post_detail", kwargs={"pk": self.kwargs["pk"]})
 
 
-class CommentUpdateView(OnlyAuthorMixin, CommentEditMixin, UpdateView):  # работает как надо, красава
+class CommentUpdateView(OnlyAuthorMixin, CommentEditMixin, UpdateView):
     form_class = CommentForm
 
     def dispatch(self, request, *args, **kwargs):
@@ -207,7 +208,7 @@ class CommentUpdateView(OnlyAuthorMixin, CommentEditMixin, UpdateView):  # ра�
         return reverse("blog:post_detail", kwargs={"pk": self.kwargs["pk"]})
 
 
-class CommentDeleteView(OnlyAuthorMixin, DeleteView):  # работяга работаем метро Люблино
+class CommentDeleteView(OnlyAuthorMixin, DeleteView):
     model = Comment
     pk_url_kwarg = "comment_pk"
     template_name = "blog/comment.html"
