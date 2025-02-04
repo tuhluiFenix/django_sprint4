@@ -5,12 +5,18 @@ from . import views
 app_name = "blog"
 
 urlpatterns = [
-    path("", views.MaintListView.as_view(), name="index"),# отображает все посты на главной странице
-    path("category/<slug:category_slug>/", views.PostCategoryListView.as_view(), name="category_posts"),# ссылка на категорию. Функция обрабатвает категорию
-    path('profile/edit/', views.EditProfileView.as_view(), name='edit_profile'),# редактирование профиля
-    path("profile/<str:username>/", views.ProfileListView.as_view(), name="profile"),# отображение профиля
-    path("posts/<int:pk>/", views.PostDetailView.as_view(), name="post_detail"),# просмотр поста
-    path("posts/create/", views.PostCreateView.as_view(), name="create_post"),# создание поста автором
+    path("", views.MaintListView.as_view(), name="index"),
+    path(
+        "category/<slug:category_slug>/", views.PostCategoryListView.as_view(),
+        name="category_posts"),
+    path("profile/edit/", views.EditProfileView.as_view(),
+         name='edit_profile'),
+    path(
+        "profile/<str:username>/", views.ProfileListView.as_view(),
+        name="profile"),
+    path("posts/<int:pk>/", views.PostDetailView.as_view(),
+         name="post_detail"),
+    path("posts/create/", views.PostCreateView.as_view(), name="create_post"),
     path(
         "posts/<int:pk>/edit/",
         views.PostUpdateView.as_view(),
