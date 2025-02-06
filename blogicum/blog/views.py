@@ -1,39 +1,28 @@
-from django.shortcuts import get_object_or_404
-from django.urls import reverse, reverse_lazy
-from django.views.generic import (
-    ListView,
-    CreateView,
-    UpdateView,
-    DetailView,
-    DeleteView)
-from blog.models import Post, User, Category, Comment
-from . forms import PostForm, UserProfileForm, CommentForm
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.mixins import UserPassesTestMixin
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.utils.timezone import now
 
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.urls import reverse, reverse_lazy
+from django.views.generic import (
+    DetailView,
+    DeleteView,
+    CreateView,
+    ListView,
+    UpdateView
+)
+
+from .forms import CommentForm, PostForm, UserProfileForm
+from blog.models import Category, Comment, Post, User
+from . mixins import CommentEditMixin, OnlyAuthorMixin
+
 NUM_ON_MAIN = 10
-
-
-class OnlyAuthorMixin(UserPassesTestMixin):
-
-    def test_func(self):
-        obj = self.get_object()
-        return obj.author == self.request.user
-
-
-class CommentEditMixin:
-    model = Comment
-    pk_url_kwarg = "comment_pk"
-    template_name = "blog/comment.html"
 
 
 class MaintListView(ListView):
     """Класс отвечающий за отображение постов на главной странице"""
 
     model = Post
-    template_name = 'blog/index.html'
+    template_name = "blog/index.html"
     paginate_by = NUM_ON_MAIN  # Количество постов на странице
 
     def get_queryset(self):
@@ -44,13 +33,10 @@ class MaintListView(ListView):
         return self.model.objects.published().annotated()
 
 
-"""Классы отвечающие за профиль."""
-
-
 class ProfileListView(ListView):
     model = User
-    template_name = 'blog/profile.html'
-    context_object_name = 'profile'
+    template_name = "blog/profile.html"
+    context_object_name = "profile"
     paginate_by = NUM_ON_MAIN
 
     def get_user(self):
@@ -83,15 +69,12 @@ class EditProfileView(LoginRequiredMixin, UpdateView):
         return reverse("blog:profile", kwargs={"username": username})
 
 
-"""Классы отвечающие за посты"""
-
-
 class PostCreateView(LoginRequiredMixin, CreateView):
     """Создание поста, назначение автора и вывод usename."""
 
     model = Post
     form_class = PostForm
-    template_name = 'blog/create.html'
+    template_name = "blog/create.html"
 
     def form_valid(self, form):
         form.instance.author = self.request.user
@@ -99,12 +82,12 @@ class PostCreateView(LoginRequiredMixin, CreateView):
 
     def get_success_url(self):
         username = self.request.user.username
-        return reverse('blog:profile', kwargs={"username": username})
+        return reverse("blog:profile", kwargs={"username": username})
 
 
 class PostDetailView(DetailView):
     model = Post
-    template_name = 'blog/detail.html'
+    template_name = "blog/detail.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -123,7 +106,7 @@ class PostDetailView(DetailView):
             is_published=True,
             category__is_published=True,
             pub_date__lte=now(),
-            id=self.kwargs['pk'],
+            id=self.kwargs["pk"],
         )
 
 
@@ -133,7 +116,7 @@ class PostCategoryListView(MaintListView):
 
     def current_category(self):
         return get_object_or_404(
-            Category, slug=self.kwargs['category_slug'], is_published=True)
+            Category, slug=self.kwargs["category_slug"], is_published=True)
 
     def get_queryset(self):
         return self.current_category().posts.published().annotated()
@@ -141,7 +124,7 @@ class PostCategoryListView(MaintListView):
     def get_context_data(self, **kwargs):
         # Добавляет посты в контекст для использования в шаблонах
         context = super().get_context_data(**kwargs)
-        context['category'] = self.current_category()
+        context["category"] = self.current_category()
         return context
 
 
@@ -173,9 +156,6 @@ class PostDeleteView(LoginRequiredMixin, OnlyAuthorMixin, DeleteView):
         return super().delete(request, *args, **kwargs)
 
 
-"""Классы для комментов"""
-
-
 class CommentCreateView(CommentEditMixin, LoginRequiredMixin, CreateView):
     model = Comment
     form_class = CommentForm
@@ -184,9 +164,6 @@ class CommentCreateView(CommentEditMixin, LoginRequiredMixin, CreateView):
         form.instance.post = get_object_or_404(Post, pk=self.kwargs["pk"])
         form.instance.author = self.request.user
         return super().form_valid(form)
-
-    def get_success_url(self):
-        return reverse("blog:post_detail", kwargs={"pk": self.kwargs["pk"]})
 
 
 class CommentUpdateView(OnlyAuthorMixin, CommentEditMixin, UpdateView):
@@ -208,7 +185,7 @@ class CommentUpdateView(OnlyAuthorMixin, CommentEditMixin, UpdateView):
         return reverse("blog:post_detail", kwargs={"pk": self.kwargs["pk"]})
 
 
-class CommentDeleteView(OnlyAuthorMixin, DeleteView):
+class CommentDeleteView(CommentEditMixin, OnlyAuthorMixin, DeleteView):
     model = Comment
     pk_url_kwarg = "comment_pk"
     template_name = "blog/comment.html"
@@ -219,11 +196,8 @@ class CommentDeleteView(OnlyAuthorMixin, DeleteView):
             return redirect("blog:post_detail", pk=self.kwargs["pk"])
         return super().delete(request, *args, **kwargs)
 
-    def get_success_url(self):
-        return reverse("blog:post_detail", kwargs={"pk": self.kwargs["pk"]})
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         # Удаляем объект формы из контекста
-        context.pop('form', None)
+        context.pop("form", None)
         return context

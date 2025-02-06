@@ -6,6 +6,8 @@ from .managers import PostQuerySet
 
 User = get_user_model()
 
+MAX_LENGTH = 256
+
 
 class PublishedModel(models.Model):
     is_published = models.BooleanField(
@@ -20,7 +22,7 @@ class PublishedModel(models.Model):
 
 
 class Category(PublishedModel):
-    title = models.CharField("Заголовок", max_length=256)
+    title = models.CharField("Заголовок", max_length=MAX_LENGTH)
     description = models.TextField("Описание")
     slug = models.SlugField(
         "Идентификатор",
@@ -38,7 +40,7 @@ class Category(PublishedModel):
 
 
 class Location(PublishedModel):
-    name = models.CharField("Название места", max_length=256)
+    name = models.CharField("Название места", max_length=MAX_LENGTH)
 
     class Meta:
         verbose_name = "местоположение"
@@ -50,7 +52,7 @@ class Location(PublishedModel):
 
 class Post(PublishedModel):
     title = models.CharField(
-        "Заголовок", max_length=256, default="Untitled Post"
+        "Заголовок", max_length=MAX_LENGTH, default="Untitled Post"
     )
     text = models.TextField("Текст", default="No content")
     pub_date = models.DateTimeField(
@@ -75,7 +77,7 @@ class Post(PublishedModel):
         verbose_name="Категория",
         on_delete=models.SET_NULL,
     )
-    image = models.ImageField('Фото', upload_to='post_images', blank=True)
+    image = models.ImageField("Фото", upload_to="post_images", blank=True)
 
     objects = PostQuerySet.as_manager()
 
@@ -93,11 +95,11 @@ class Post(PublishedModel):
 
 class Comment(models.Model):
     text = models.TextField(
-        'Комментарий'
+        "Комментарий"
     )
     post = models.ForeignKey(
         Post, on_delete=models.CASCADE,
-        related_name='comments'
+        related_name="comments"
     )
     created_at = models.DateTimeField(
         auto_now_add=True)
@@ -107,5 +109,5 @@ class Comment(models.Model):
     )
 
     class Meta:
-        verbose_name = 'Комментарий'
-        verbose_name_plural = 'Комментарии'
+        verbose_name = "Комментарий"
+        verbose_name_plural = "Комментарии"

@@ -1,5 +1,10 @@
 from django import forms
-from .models import Post, User, Comment
+
+from .models import Comment, Post, User
+
+
+ROWS = 3
+COLS = 5
 
 
 class UserProfileForm(forms.ModelForm):
@@ -33,5 +38,5 @@ class CommentForm(forms.ModelForm):
         fields = ('text',)
         widgets = {
             'text': forms.Textarea(
-                attrs={'rows': 3, 'cols': 5})
+                attrs={'rows': ROWS, 'cols': COLS})
         }
